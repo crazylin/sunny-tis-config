@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build -f ../Dockerfile . --network host  -t sunny-tis-config:v1
+      run: docker build -f Dockerfile ./src --network host  -t sunny-tis-config:v1
