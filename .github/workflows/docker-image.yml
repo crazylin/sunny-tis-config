@@ -8,7 +8,7 @@ defaults:
 
 jobs:
   deploy:
-    name: deploy
+    name: Deployment
     runs-on: ubuntu-20.04
     steps:
       -

@@ -1,5 +1,5 @@
 
-FROM ros:galactic
+FROM ros:galactic AS deploy
 
 RUN echo "source /opt/ros/galactic/setup.bash" >> /root/.bashrc
 
