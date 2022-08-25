@@ -14,7 +14,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/* \
     && pip3 install pyzmq
 
-COPY ./config_node/ros2_numpy /usr/lib/python3/dist-packages/ros2_numpy
+COPY ./src/config_node/ros2_numpy /usr/lib/python3/dist-packages/ros2_numpy
 
 # CMD [ "python3", "/workspace/sunny-tis-config/src/config_node/main.py" ]
 
