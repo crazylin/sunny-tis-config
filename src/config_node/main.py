@@ -10,38 +10,38 @@ from zmq.utils import jsonapi
 import numpy as np
 from point_data import SeamData
 
-# params ={
-#             'camera_tis_node': {'exposure_time': 1000, 'power': False},
-#             'gpio_raspberry_node': {'laser': False},
-#             'seam_tracking_node': {
-#                 'codes': [],
-#                 'task': -1,
-#                 'delta_x': 0.,
-#                 'delta_y': 0.,
-#                 'enable': False,
-#                 'window_size': 10,
-#                 'gap': 2,
-#                 'step': 2.,
-#                 'length': 5},
-#             'laser_line_center_node': {
-#                 'ksize': 5,
-#                 'threshold': 35,
-#                 'width_min': 1.,
-#                 'width_max': 30.},
-#             'laser_line_filter_node': {
-#                 'enable': False,
-#                 'window_size': 10,
-#                 'gap': 5,
-#                 'deviate': 5.,
-#                 'step': 2.,
-#                 'length': 30},
-#             'line_center_reconstruction_node': {
-#                 'homography_matrix': [
-#                     0.16085207487679626, 0.2679666549425936, -205.1548588898662,
-#                     -0.7409214060537485, 0.009161773590904738, 758.7035197990384,
-#                     0.0060885745075360325, 4.084389881288615e-06, 1.0]
-#             }
-#         }
+params ={
+            'camera_tis_node': {'exposure_time': 1000, 'power': False},
+            'gpio_raspberry_node': {'laser': False},
+            'seam_tracking_node': {
+                'codes': [],
+                'task': -1,
+                'delta_x': 0.,
+                'delta_y': 0.,
+                'enable': False,
+                'window_size': 10,
+                'gap': 2,
+                'step': 2.,
+                'length': 5},
+            'laser_line_center_node': {
+                'ksize': 5,
+                'threshold': 35,
+                'width_min': 1.,
+                'width_max': 30.},
+            'laser_line_filter_node': {
+                'enable': False,
+                'window_size': 10,
+                'gap': 5,
+                'deviate': 5.,
+                'step': 2.,
+                'length': 30},
+            'line_center_reconstruction_node': {
+                'homography_matrix': [
+                    0.16085207487679626, 0.2679666549425936, -205.1548588898662,
+                    -0.7409214060537485, 0.009161773590904738, 758.7035197990384,
+                    0.0060885745075360325, 4.084389881288615e-06, 1.0]
+            }
+        }
 
        
 # params_cb = {
