@@ -56,6 +56,7 @@ dtype = [(x, np.float32) for x in 'xyi']
 
 pub_socket:zmq.Socket
 rep_socket:zmq.Socket
+beat_socket:zmq.Socket
 thExist:bool = False
 ros:RosNode
 seam_data = SeamData()
@@ -72,53 +73,49 @@ seam_data = SeamData()
 
 
 def ros_cb_seam(msg):
-    try:
-        seam_data.from_msg(msg)
-        d, id, fps = seam_data.get()
-        if int(id) % 2 == 0:
-            return
-        new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
-        pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
-    except Exception as e :
+    seam_data.from_msg(msg)
+    d, id, fps = seam_data.get()
+    if int(id) % 2 == 0:
         return
-
+    new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
+    pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
 # def ros_cb_pnts(msg):
 #     pub_socket.send_multipart([b"Pnts",jsonapi.dumps(msg)])
 def ros_cb_log(msg):
-    try:
-        new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
-        pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
-    except Exception as e :
-        return
+    new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
+    pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
 
 def rep_server(socket):
     while thExist:
-        try :
-            command,name,data = rep_socket.recv_multipart()
-            command = command.decode("UTF-8")
-            name = name.decode("UTF-8")
-            data = data.decode("UTF-8")
-            if command == "get_params" :
-                reqNames = json.loads(data)
-                future = ros.get_params(name, reqNames)
-                dic = dict()
-                if future != None:
-                    count = 0
-                    for p in future.values:
-                        dic[reqNames[count]] = from_parameter_value(p)
-                        count+=1
-                rep_socket.send_multipart([b"get_params",json.dumps(dic).encode("utf8")])
-            elif command == "set_params" :
-                future = ros.set_params(name, json.loads(data))
-                ret = []
+        command,name,data = rep_socket.recv_multipart()
+        command = command.decode("UTF-8")
+        name = name.decode("UTF-8")
+        data = data.decode("UTF-8")
+        if command == "get_params" :
+            reqNames = json.loads(data)
+            future = ros.get_params(name, reqNames)
+            dic = dict()
+            if future == None:
+                ret.append({"successful":"falied","reason":"service not ready"})
+            else :
+                count = 0
+                for p in future.values:
+                    dic[reqNames[count]] = from_parameter_value(p)
+                    count+=1
+            rep_socket.send_multipart([b"get_params",json.dumps(dic).encode("utf8")])
+        elif command == "set_params" :
+            future = ros.set_params(name, json.loads(data))
+            ret = []
+            if future == None:
+                ret.append({"successful":"falied","reason":"service not ready"})
+            else :
                 for result in future.results:
                     ret.append({"successful":result.successful,"reason":result.reason})
-                rep_socket.send_multipart([b"set_params",json.dumps(ret).encode("utf8")])
-            elif command == "pub_config" :
-                ret = ros.pub_config(data)
-                rep_socket.send_multipart([b"pub_config",json.dumps(ret).encode("utf8")])
-        except Exception as e :
-            continue
+            rep_socket.send_multipart([b"set_params",json.dumps(ret).encode("utf8")])
+        elif command == "pub_config" :
+            ret = ros.pub_config(data)
+            rep_socket.send_multipart([b"pub_config",json.dumps(ret).encode("utf8")])
+
  
 if __name__ == '__main__':
     rclpy.init()
@@ -138,6 +135,7 @@ if __name__ == '__main__':
 
     rep_socket = context.socket(zmq.REP)
     rep_socket.bind("tcp://*:5577")
+    
 
     thExist = True
     rep_socket_thread = Thread(target=rep_server, args=[rep_socket])
