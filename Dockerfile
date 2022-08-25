@@ -16,7 +16,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 COPY ./src/config_node/ros2_numpy /usr/lib/python3/dist-packages/ros2_numpy
 
-# CMD [ "python3", "/workspace/sunny-tis-config/src/config_node/main.py" ]
+CMD [ "python3", "/workspace/sunny-tis-config/src/config_node/main.py" ]
 
 # Run colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
 
