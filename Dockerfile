@@ -16,8 +16,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 COPY ./config_node/ros2_numpy /usr/lib/python3/dist-packages/ros2_numpy
 
+CMD [ "python3", "/workspace/sunny-tis-config/src/config_node/main.py" ]
 
-    
 # Run colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 #RUN mkdir -p src && cd src && git clone https://github.com/ros/ros_tutorials.git -b galactic-devel
