@@ -10,38 +10,38 @@ from zmq.utils import jsonapi
 import numpy as np
 from point_data import SeamData
 
-params ={
-            'camera_tis_node': {'exposure_time': 1000, 'power': False},
-            'gpio_raspberry_node': {'laser': False},
-            'seam_tracking_node': {
-                'codes': [],
-                'task': -1,
-                'delta_x': 0.,
-                'delta_y': 0.,
-                'enable': False,
-                'window_size': 10,
-                'gap': 2,
-                'step': 2.,
-                'length': 5},
-            'laser_line_center_node': {
-                'ksize': 5,
-                'threshold': 35,
-                'width_min': 1.,
-                'width_max': 30.},
-            'laser_line_filter_node': {
-                'enable': False,
-                'window_size': 10,
-                'gap': 5,
-                'deviate': 5.,
-                'step': 2.,
-                'length': 30},
-            'line_center_reconstruction_node': {
-                'homography_matrix': [
-                    0.16085207487679626, 0.2679666549425936, -205.1548588898662,
-                    -0.7409214060537485, 0.009161773590904738, 758.7035197990384,
-                    0.0060885745075360325, 4.084389881288615e-06, 1.0]
-            }
-        }
+# params ={
+#             'camera_tis_node': {'exposure_time': 1000, 'power': False},
+#             'gpio_raspberry_node': {'laser': False},
+#             'seam_tracking_node': {
+#                 'codes': [],
+#                 'task': -1,
+#                 'delta_x': 0.,
+#                 'delta_y': 0.,
+#                 'enable': False,
+#                 'window_size': 10,
+#                 'gap': 2,
+#                 'step': 2.,
+#                 'length': 5},
+#             'laser_line_center_node': {
+#                 'ksize': 5,
+#                 'threshold': 35,
+#                 'width_min': 1.,
+#                 'width_max': 30.},
+#             'laser_line_filter_node': {
+#                 'enable': False,
+#                 'window_size': 10,
+#                 'gap': 5,
+#                 'deviate': 5.,
+#                 'step': 2.,
+#                 'length': 30},
+#             'line_center_reconstruction_node': {
+#                 'homography_matrix': [
+#                     0.16085207487679626, 0.2679666549425936, -205.1548588898662,
+#                     -0.7409214060537485, 0.009161773590904738, 758.7035197990384,
+#                     0.0060885745075360325, 4.084389881288615e-06, 1.0]
+#             }
+#         }
 
        
 # params_cb = {
@@ -72,44 +72,53 @@ seam_data = SeamData()
 
 
 def ros_cb_seam(msg):
-    seam_data.from_msg(msg)
-    d, id, fps = seam_data.get()
-    if int(id) % 2 == 0:
+    try:
+        seam_data.from_msg(msg)
+        d, id, fps = seam_data.get()
+        if int(id) % 2 == 0:
+            return
+        new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
+        pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
+    except Exception as e :
         return
-    new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
-    pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
+
 # def ros_cb_pnts(msg):
 #     pub_socket.send_multipart([b"Pnts",jsonapi.dumps(msg)])
 def ros_cb_log(msg):
-    new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
-    pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
+    try:
+        new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
+        pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
+    except Exception as e :
+        return
 
 def rep_server(socket):
     while thExist:
-        command,name,data = rep_socket.recv_multipart()
-        command = command.decode("UTF-8")
-        name = name.decode("UTF-8")
-        data = data.decode("UTF-8")
-        if command == "get_params" :
-            reqNames = json.loads(data)
-            future = ros.get_params(name, reqNames)
-            dic = dict()
-            if future != None:
-                count = 0
-                for p in future.values:
-                    dic[reqNames[count]] = from_parameter_value(p)
-                    count+=1
-            rep_socket.send_multipart([b"get_params",json.dumps(dic).encode("utf8")])
-        elif command == "set_params" :
-            future = ros.set_params(name, json.loads(data))
-            ret = []
-            for result in future.results:
-                ret.append({"successful":result.successful,"reason":result.reason})
-            rep_socket.send_multipart([b"set_params",json.dumps(ret).encode("utf8")])
-        elif command == "pub_config" :
-            ret = ros.pub_config(data)
-            rep_socket.send_multipart([b"pub_config",json.dumps(ret).encode("utf8")])
-
+        try :
+            command,name,data = rep_socket.recv_multipart()
+            command = command.decode("UTF-8")
+            name = name.decode("UTF-8")
+            data = data.decode("UTF-8")
+            if command == "get_params" :
+                reqNames = json.loads(data)
+                future = ros.get_params(name, reqNames)
+                dic = dict()
+                if future != None:
+                    count = 0
+                    for p in future.values:
+                        dic[reqNames[count]] = from_parameter_value(p)
+                        count+=1
+                rep_socket.send_multipart([b"get_params",json.dumps(dic).encode("utf8")])
+            elif command == "set_params" :
+                future = ros.set_params(name, json.loads(data))
+                ret = []
+                for result in future.results:
+                    ret.append({"successful":result.successful,"reason":result.reason})
+                rep_socket.send_multipart([b"set_params",json.dumps(ret).encode("utf8")])
+            elif command == "pub_config" :
+                ret = ros.pub_config(data)
+                rep_socket.send_multipart([b"pub_config",json.dumps(ret).encode("utf8")])
+        except Exception as e :
+            continue
  
 if __name__ == '__main__':
     rclpy.init()
