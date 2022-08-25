@@ -56,7 +56,7 @@ dtype = [(x, np.float32) for x in 'xyi']
 
 pub_socket:zmq.Socket
 rep_socket:zmq.Socket
-beat_socket:zmq.Socket
+poller:zmq.Poller
 thExist:bool = False
 ros:RosNode
 seam_data = SeamData()
@@ -73,48 +73,63 @@ seam_data = SeamData()
 
 
 def ros_cb_seam(msg):
-    seam_data.from_msg(msg)
-    d, id, fps = seam_data.get()
-    if int(id) % 2 == 0:
+    try:
+        seam_data.from_msg(msg)
+        d, id, fps = seam_data.get()
+        if int(id) % 2 == 0:
+            return
+        new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
+        pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
+    except Exception:
         return
-    new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
-    pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
+
 # def ros_cb_pnts(msg):
 #     pub_socket.send_multipart([b"Pnts",jsonapi.dumps(msg)])
 def ros_cb_log(msg):
-    new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
-    pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
+    try:
+        new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
+        pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
+    except Exception:
+        return
+
 
 def rep_server(socket):
     while thExist:
-        command,name,data = rep_socket.recv_multipart()
-        command = command.decode("UTF-8")
-        name = name.decode("UTF-8")
-        data = data.decode("UTF-8")
-        if command == "get_params" :
-            reqNames = json.loads(data)
-            future = ros.get_params(name, reqNames)
-            dic = dict()
-            if future == None:
-                ret.append({"successful":"falied","reason":"service not ready"})
-            else :
-                count = 0
-                for p in future.values:
-                    dic[reqNames[count]] = from_parameter_value(p)
-                    count+=1
-            rep_socket.send_multipart([b"get_params",json.dumps(dic).encode("utf8")])
-        elif command == "set_params" :
-            future = ros.set_params(name, json.loads(data))
-            ret = []
-            if future == None:
-                ret.append({"successful":"falied","reason":"service not ready"})
-            else :
-                for result in future.results:
-                    ret.append({"successful":result.successful,"reason":result.reason})
-            rep_socket.send_multipart([b"set_params",json.dumps(ret).encode("utf8")])
-        elif command == "pub_config" :
-            ret = ros.pub_config(data)
-            rep_socket.send_multipart([b"pub_config",json.dumps(ret).encode("utf8")])
+        try:
+            socks = dict(poller.poll())
+            if socks.get(rep_socket) != zmq.POLLIN:
+                continue
+            address,command,name,data = rep_socket.recv_multipart()
+            command = command.decode("UTF-8")
+            name = name.decode("UTF-8")
+            data = data.decode("UTF-8")
+            if command == "get_params" :
+                reqNames = json.loads(data)
+                future = ros.get_params(name, reqNames)
+                dic = dict()
+                if future == None:
+                    ret.append({"successful":False,"reason":"service not ready"})
+                else :
+                    count = 0
+                    for p in future.values:
+                        dic[reqNames[count]] = from_parameter_value(p)
+                        count+=1
+                rep_socket.send_multipart([address, b"get_params",json.dumps(dic).encode("utf8")])
+            elif command == "set_params" :
+                future = ros.set_params(name, json.loads(data))
+                ret = []
+                if future == None:
+                    ret.append({"successful": False,"reason":"service not ready"})
+                else :
+                    for result in future.results:
+                        ret.append({"successful":result.successful,"reason":result.reason})
+                rep_socket.send_multipart([address,b"set_params",json.dumps(ret).encode("utf8")])
+            elif command == "pub_config" :
+                ret = ros.pub_config(data)
+                rep_socket.send_multipart([address,b"pub_config",json.dumps(ret).encode("utf8")])
+
+        except Exception:
+            continue
 
  
 if __name__ == '__main__':
@@ -133,9 +148,11 @@ if __name__ == '__main__':
     pub_socket = context.socket(zmq.PUB)
     pub_socket.bind("tcp://*:5566")
 
-    rep_socket = context.socket(zmq.REP)
+    rep_socket = context.socket(zmq.ROUTER)
     rep_socket.bind("tcp://*:5577")
     
+    poller = zmq.Poller()
+    poller.register(rep_socket, zmq.POLLIN)
 
     thExist = True
     rep_socket_thread = Thread(target=rep_server, args=[rep_socket])
