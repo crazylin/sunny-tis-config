@@ -6,7 +6,6 @@ from threading import Thread
 import rclpy
 from ros_node import RosNode, from_parameter_value
 from threading import Lock
-from zmq.utils import jsonapi
 import numpy as np
 from point_data import SeamData
 from perspect import getNewHomography
@@ -80,7 +79,7 @@ def ros_cb_seam(msg):
         if int(id) % 2 == 0:
             return
         new_msg = {"id":id,"fps":fps,"i":np.array(d["i"]).tolist(),"x":np.array(d["x"]).tolist(),"y":np.array(d["y"]).tolist()}
-        pub_socket.send_multipart([b"Seam",jsonapi.dumps(new_msg)])
+        pub_socket.send_multipart([b"Seam",json.dumps(new_msg).encode("utf8")])
     except Exception:
         return
 
@@ -89,7 +88,7 @@ def ros_cb_seam(msg):
 def ros_cb_log(msg):
     try:
         new_msg = {"level":  msg.level, "name": msg.name, "msg": msg.msg}
-        pub_socket.send_multipart([b"Log",jsonapi.dumps(new_msg)])
+        pub_socket.send_multipart([b"Log",json.dumps(new_msg).encode("utf8")])
     except Exception:
         return
 
@@ -120,11 +119,10 @@ def rep_server(socket):
                 d = json.loads(data)
                 if name == "line_center_reconstruction_node":
                     h = params["line_center_reconstruction_node"]["homography_matrix"]
-                    src = d.src
-                    dst = d.dst
-                    remap=(0, 1024, 0, 1536)
-                    h = getNewHomography(d.src,d.dst,H,remap)
-                    d= {"homography_matrix",h}
+                    src = d["src"]
+                    dst = d["dst"]
+                    h = getNewHomography(src,dst,h,remap=(0, 1024, 0, 1536))
+                    d = {"homography_matrix":h}
                 future = ros.set_params(name, d)
                 ret = []
                 if future == None:
