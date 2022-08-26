@@ -9,6 +9,7 @@ from threading import Lock
 from zmq.utils import jsonapi
 import numpy as np
 from point_data import SeamData
+from perspect import getNewHomography
 
 params ={
             'camera_tis_node': {'exposure_time': 1000, 'power': False},
@@ -116,7 +117,15 @@ def rep_server(socket):
                         count+=1
                 rep_socket.send_multipart([address, b"get_params",json.dumps(dic).encode("utf8")])
             elif command == "set_params" :
-                future = ros.set_params(name, json.loads(data))
+                d = json.loads(data)
+                if name == "line_center_reconstruction_node":
+                    h = params["line_center_reconstruction_node"]["homography_matrix"]
+                    src = d.src
+                    dst = d.dst
+                    remap=(0, 1024, 0, 1536)
+                    h = getNewHomography(d.src,d.dst,H,remap)
+                    d= {"homography_matrix",h}
+                future = ros.set_params(name, d)
                 ret = []
                 if future == None:
                     ret.append({"successful": False,"reason":"service not ready"})
